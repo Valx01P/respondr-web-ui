@@ -33,7 +33,7 @@ export const metadata = {
   title: "Respondr",
   description: "Accident Helper",
   icons: {
-    icon: "https://res.cloudinary.com/startup-grind/image/upload/c_fill,dpr_2.0,f_auto,g_center,h_16,q_auto:good,w_16/v1/gcs/platform-data-goog/contentbuilder/GDG_Bevy_Favicon_y29LtMy.png",
+    icon: "https://res.cloudinary.com/dqo1uzz0i/image/upload/v1758348744/respondr_logo_p8gdks.png",
   },
 }
 
