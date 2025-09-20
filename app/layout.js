@@ -1,4 +1,5 @@
 import localFont from "next/font/local"
+import AuthProvider from "./AuthProvider"
 import "./globals.css"
 
 export const googleSansCode = localFont({
@@ -25,7 +26,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${googleSansCode.variable} antialiased`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )
