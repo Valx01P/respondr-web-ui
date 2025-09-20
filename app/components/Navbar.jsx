@@ -2,7 +2,6 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import AuthButtons from "./AuthButtons"
 
 const Navbar = () => {
   return (
@@ -33,8 +32,6 @@ const Navbar = () => {
           contact
         </Link>
 
-        {/* auth buttons */}
-        <AuthButtons />
       </div>
     </nav>
   )
