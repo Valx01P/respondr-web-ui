@@ -9,12 +9,16 @@ const Respondr = () => {
   const [videoFile, setVideoFile] = useState(null)
   const [videoPreview, setVideoPreview] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false)
 
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const liveStreamRef = useRef(null)
   const stopTimeoutRef = useRef(null)
-  const streamRef = useRef(null) // keep stream reference alive
+  const streamRef = useRef(null)
+  const audioRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const audioStreamRef = useRef(null)
 
   // Cleanup on unmount
   useEffect(() => {
@@ -24,6 +28,9 @@ const Respondr = () => {
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop())
       }
       if (stopTimeoutRef.current) {
         clearTimeout(stopTimeoutRef.current)
@@ -215,6 +222,58 @@ const Respondr = () => {
     xhr.send(formData)
   }
 
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioStreamRef.current = stream
+      setIsRecordingAudio(true)
+      
+      audioRecorderRef.current = new MediaRecorder(stream)
+      audioChunksRef.current = []
+
+      audioRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      audioRecorderRef.current.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+        const file = new File([blob], "audio.webm", { type: "audio/webm" })
+        
+        const formData = new FormData()
+        formData.append("audio", file)
+
+        const xhr = new XMLHttpRequest()
+        xhr.open("POST", "http://localhost:8000/transcribe", true)
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText)
+            setNote(prev => prev + (prev ? ' ' : '') + data.transcription)
+          }
+        }
+
+        xhr.send(formData)
+
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop())
+          audioStreamRef.current = null
+        }
+      }
+
+      audioRecorderRef.current.start()
+    } catch (error) {
+      console.error("Error starting audio recording:", error)
+      alert("Could not start audio recording. Please check microphone permissions.")
+    }
+  }
+
+  const stopAudioRecording = () => {
+    if (audioRecorderRef.current && isRecordingAudio) {
+      audioRecorderRef.current.stop()
+      setIsRecordingAudio(false)
+    }
+  }
+
   return (
     <section className="flex flex-col items-center justify-center px-4 py-16 md:py-24 min-h-[90vh] relative">
       {/* heading */}
@@ -301,15 +360,31 @@ const Respondr = () => {
 
         {/* description */}
         <div className="flex flex-col gap-3">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="optional: describe what happened..."
-            className="resize-none rounded-xl border border-gray-700 bg-[#1c1c1c]/80 backdrop-blur-sm p-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px]"
-          />
+          <div className="relative">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="optional: describe what happened..."
+              className="resize-none rounded-xl border border-gray-700 bg-[#1c1c1c]/80 backdrop-blur-sm p-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] w-full"
+            />
+            {isRecordingAudio && (
+              <div className="absolute top-2 right-2 flex items-center gap-2 text-red-400 text-sm">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                Recording audio...
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-between gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-gray-700 to-gray-800 hover:opacity-90 transition-all text-sm">
-              <Mic size={16} /> use voice instead
+            <button
+              onClick={isRecordingAudio ? stopAudioRecording : startAudioRecording}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                isRecordingAudio 
+                  ? 'bg-gradient-to-r from-red-600 to-pink-600 hover:opacity-90' 
+                  : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:opacity-90'
+              }`}
+            >
+              <Mic size={16} /> 
+              {isRecordingAudio ? 'stop recording' : 'use voice instead'}
             </button>
             <button
               onClick={handleAnalyze}
